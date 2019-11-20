@@ -17,12 +17,18 @@
 int main(int argc, char* argv[])
 {
 
-    for (int i=0; i<atoi(argv[1]); i++) { 
-        if (fork() == 0) { 
-            printf("[son] pid %d from [parent] pid %d\n",getpid(),getppid()); 
-            exit(0); 
-        } 
+    pid_t pid;
+    for (int i=0; i<atoi(argv[1]); i++) {    //creates childs bases on input
+
+        if ( (pid = fork()) == -1) {
+            printf("Error while using function fork() !");
+            return -1;
+        }
+
+        if (pid == 0)                 //if it is a child break and dont fork again
+            break;
+
     }
-    
+    printf("hello world \n");
     return 0;
 }
