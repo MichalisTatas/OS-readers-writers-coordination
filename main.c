@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <string.h>
 
 
 /*
@@ -18,22 +19,19 @@
  */
 
 /*
- * semaphore functions in one .h
- * 
- */
-
-/*
  * should the shared memory array contain structs to also keep
  * the statistics as well as the integer
  * that the processes will read or write
  */
 
+//command line arguments with order : childs, array size
+
 int main(int argc, char* argv[])
 {
     key_t key = ftok("shm", 65);
-    int smhId = shmget(key, 1024, 0666|IPC_CREAT);
-    int *smhInt = (int*) shmat(smhId, (void*)0, 0);
-    *smhInt = 0;
+    int smhId = shmget(key, sizeof(int), 0666|IPC_CREAT);
+    void *smhInt = shmat(smhId, NULL, 0); 
+    memset(smhInt, 0, sizeof(int));
 
     pid_t pid;
 
@@ -49,10 +47,11 @@ int main(int argc, char* argv[])
 
     }
     
-    *smhInt = *smhInt + 1;
-    printf("hello world : %d\n", *smhInt);
+    *(int*)smhInt = *(int*)smhInt +1;
+    printf("hello world : %d\n", *(int*)smhInt);
     
     shmdt(smhInt);
     exit(0);
     return 0;
 }
+
