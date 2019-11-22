@@ -63,20 +63,20 @@ int main(int argc, char* argv[])
     //     exit(1);
     // }
     
-    int smhId = shmget(101, ((int)sizeof(entrie))*array_size, 0666|IPC_CREAT);  //gets the shared memory segment
-    if (smhId == -1) {
+    int shmId = shmget(100, ((int)sizeof(entrie))*array_size, 0666|IPC_CREAT);  //gets the shared memory segment //if
+    if (shmId == -1) {
         perror("shmget : ");
         exit(1);
     }
 
-    void *smhAddress = shmat(smhId, NULL, 0);                //gets the address of the shares memory segment
-    if (!smhAddress) {
+    void *shmAddress = shmat(shmId, NULL, 0);                //gets the address of the shares memory segment
+    if (!shmAddress) {
         perror("shmat : ");
         exit(1);
     }
 
     entriePtr entries;
-    entries = (entriePtr)smhAddress;
+    entries = (entriePtr)shmAddress;
     srand(time(0));
 
     for (int m=0; m<array_size; m++) {
@@ -90,7 +90,11 @@ int main(int argc, char* argv[])
         printf("random number : %d \n", entries[n].content);
     }
     
-    shmdt(smhAddress);
+    struct shmid_ds shm_desc;                       //delete shared memory
+    if (shmctl(shmId, IPC_RMID, &shm_desc) == -1) {
+        perror("main: shmctl: ");
+    }   
+    shmdt(shmAddress);                              //delete shared memory pointer
     exit(0);
     return 0;
 }
