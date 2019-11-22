@@ -5,7 +5,12 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <string.h>
+#include <time.h>
 
+/*
+ * use semaphores not monitors for this project
+ * bcz with monitors ever if 1 reader reads nobody can read 
+ */
 
 /*
  * i must create a shared memory array with size input from command line
@@ -26,16 +31,22 @@
 
 //command line arguments with order : childs, array size
 
+typedef struct entrie { 
+    int content;
+    int reads;
+    int writes;
+    int averageTime;
+} entrie;
+typedef entrie* entriePtr;
+
 int main(int argc, char* argv[])
 {
-    key_t key = ftok("shm", 65);
-    int smhId = shmget(key, sizeof(int), 0666|IPC_CREAT);
-    void *smhInt = shmat(smhId, NULL, 0); 
-    memset(smhInt, 0, sizeof(int));
+    int childs_number = atoi(argv[1]);
+    int array_size = atoi(argv[2]);
 
     pid_t pid;
 
-    for (int i=0; i<atoi(argv[1]); i++) {    //creates childs bases on input
+    for (int i=0; i<childs_number; i++) {    //creates childs bases on input
 
         if ( (pid = fork()) == -1 ) {
             printf("Error while using function fork() !");
@@ -44,13 +55,42 @@ int main(int argc, char* argv[])
 
         if (pid == 0)                 //if it is a child break and dont fork again
             break;
-
     }
     
-    *(int*)smhInt = *(int*)smhInt +1;
-    printf("hello world : %d\n", *(int*)smhInt);
+    // key_t key = ftok("main", 65);             //produces unique key  //look at this befor : "smh"
+    // if (key == -1) {
+    //     perror("ftok : ");
+    //     exit(1);
+    // }
     
-    shmdt(smhInt);
+    int smhId = shmget(101, ((int)sizeof(entrie))*array_size, 0666|IPC_CREAT);  //gets the shared memory segment
+    if (smhId == -1) {
+        perror("shmget : ");
+        exit(1);
+    }
+
+    void *smhAddress = shmat(smhId, NULL, 0);                //gets the address of the shares memory segment
+    if (!smhAddress) {
+        perror("shmat : ");
+        exit(1);
+    }
+
+    entriePtr entries;
+    entries = (entriePtr)smhAddress;
+    srand(time(0));
+
+    for (int m=0; m<array_size; m++) {
+        entries[m].content = rand() % array_size;
+        entries[m].reads = 0;
+        entries[m].writes = 0;
+        entries[m].averageTime = 0;
+    }
+    
+    for (int n=0; n<array_size; n++) {
+        printf("random number : %d \n", entries[n].content);
+    }
+    
+    shmdt(smhAddress);
     exit(0);
     return 0;
 }
