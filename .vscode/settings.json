@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "wait.h": "c",
+        "functions.h": "c",
+        "struct.h": "c",
+        "unistd.h": "c",
+        "shm.h": "c",
+        "stdlib.h": "c",
+        "semaphore.h": "c",
+        "pthread.h": "c",
+        "string.h": "c"
+    }
+}
