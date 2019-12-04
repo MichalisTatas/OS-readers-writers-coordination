@@ -9,42 +9,12 @@
 #include <semaphore.h>
 #include <pthread.h>
 
-/*
- * use semaphores not monitors for this project
- * bcz with monitors ever if 1 reader reads nobody can read 
- */
-
-/*
- * i must create a shared memory array with size input from command line
- * create readers writers do thei thing
- * when someone reads an index increase its readerCounter
- * same goes for writers
- * lastly when readers and writers finish their job
- * the coordinator iterates the whole array
- * and prints data like readerCounter, writerCounter
- * time spent for each action etc
- */
-
-/*
- * should the shared memory array contain structs to also keep
- * the statistics as well as the integer
- * that the processes will read or write
- */
-
-//gcc main.c -lpthread -lrt
-
-/*
- * add 2 semaphores in the struct
- * and initialize them in for
- * so i can read or write every struct in the 
- * shares memory and not the shm as a whole
- */
-
-//command line arguments with order : childs, array size
+//command line arguments with order : childs, array size, readers writers analogy, numbers of activation of peers
 
 typedef struct entrie {
     sem_t readerSem;
     sem_t writerSem;
+    int readerCounter;
     int content;
     int reads;
     int writes;
@@ -52,12 +22,12 @@ typedef struct entrie {
 } entrie;
 typedef entrie* entriePtr;
 
-
 int main(int argc, char* argv[])
 {
     int childs_number = atoi(argv[1]);
     int array_size = atoi(argv[2]);
     int RWanalogy = atoi(argv[3]);             //readers writers analogy
+    int peersActivation = atoi(argv[4]);
 
     key_t key = ftok("main.c", 100);             //produces unique key
     if (key == -1) {
@@ -91,7 +61,7 @@ int main(int argc, char* argv[])
         if (pid == 0)                 //if it is a child break and dont fork again
             break;
     }
-
+    
     entriePtr entries;
     entries = (entriePtr)shmAddress;
     srand(time(0));
@@ -100,24 +70,53 @@ int main(int argc, char* argv[])
         sem_init(&entries[m].readerSem, 1, 1);               //2nd argument is >0 because
         sem_init(&entries[m].writerSem, 1, 1);               //fork creates processes not threads
         entries[m].content = rand() % array_size;
+        entries[m].readerCounter = 0;
         entries[m].reads = 0;
         entries[m].writes = 0;
         entries[m].averageTime = 0;
     }
     
-    if ((rand()%10) <= RWanalogy) {
-        //choose random entrie and try to read
-        int randomEntrie = rand() % array_size;
-    }
-    else {
-        //choose random entrie and try to write
-        int randomEntrie = rand() % array_size;
+    srand(getpid());
+    for (int i=0; i<peersActivation; i++) {
+        if ((rand()%10) <= RWanalogy) {
+            //choose random entrie and try to read
+
+            int randomEntrie = rand() % array_size;
+            sem_wait(&entries[randomEntrie].readerSem);
+            entries[randomEntrie].readerCounter ++;
+            if (entries[randomEntrie].readerCounter == 1)
+                sem_wait(&entries[randomEntrie].writerSem);
+            sem_post(&entries[randomEntrie].readerSem);
+            sleep(1);
+            // printf("Reading entrie num : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
+            entries[randomEntrie].reads ++ ;
+
+            sem_wait(&entries[randomEntrie].readerSem);
+            entries[randomEntrie].readerCounter --;
+            if (entries[randomEntrie].readerCounter == 0)
+                sem_post(&entries[randomEntrie].writerSem);
+            sem_post(&entries[randomEntrie].readerSem);
+        }
+        else {
+            //choose random entrie and try to write
+
+            int randomEntrie = rand() % array_size;
+            sem_wait(&entries[randomEntrie].writerSem);
+            sleep(1);
+            // printf("Writing on entrie number : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
+            entries[randomEntrie].content = rand()%array_size;
+            entries[randomEntrie].writes ++ ;
+            // printf("Changed its value to : %d\n", entries[randomEntrie].content);
+            sem_post(&entries[randomEntrie].writerSem);
+        }
     }
 
-    for (int n=0; n<array_size; n++) {
-        printf("random number : %d \n", entries[n].content);
-        sem_destroy(&entries[n].readerSem);
-        sem_destroy(&entries[n].writerSem);
+    if(pid != 0) {
+        for (int n=0; n<array_size; n++) {
+            printf("random number : %d %d\n", entries[n].reads , entries[n].writes);
+            sem_destroy(&entries[n].readerSem);
+            sem_destroy(&entries[n].writerSem);
+        }
     }
     
     struct shmid_ds shm_desc;                       //delete shared memory
