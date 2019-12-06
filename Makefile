@@ -3,7 +3,7 @@ OBJS = src/main.o src/functions.o
 BIN = /bin
 
 ex : $(OBJS)
-	gcc $(OBJS) -o ex -lpthread -lrt
+	gcc $(OBJS) -o ex -lpthread -lrt -lm
 
 clean:
 	rm ex $(OBJS)
