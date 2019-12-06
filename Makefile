@@ -7,9 +7,6 @@ SOURCE = src
 ex : $(OBJS)
 	gcc $(OBJS) -o ex -lpthread -lrt -lm
 
-run:
-	./ex 40 5 6 2
-
 clean:
 	rm ex
 	rm $(SOURCE)/functions.o
