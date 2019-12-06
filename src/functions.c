@@ -3,7 +3,7 @@
 
 void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivationNum)
 {
-    key_t key = ftok("main.c", 100);             //produces unique key
+    key_t key = ftok("src/functions.c", 100);             //produces unique key
     if (key == -1) {
         perror("ftok error : ");
         exit(1);
