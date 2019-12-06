@@ -8,6 +8,7 @@
 #include <sys/shm.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #include <pthread.h>
 
 typedef struct entrie {

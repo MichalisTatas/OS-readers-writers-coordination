@@ -1,6 +1,50 @@
 #include "../include/struct.h"
 #include "../include/functions.h"
 
+double exponentialDistribution(double l){
+    double u;
+    u = rand() / (RAND_MAX + 1.0);
+    return -log(1- u) / l;
+}
+
+void readerFunction(int arraySize, entriePtr entries)
+{
+    int randomEntrie = rand() % arraySize;
+    sem_wait(&entries[randomEntrie].readerSem);
+    entries[randomEntrie].readerCounter ++;
+    if (entries[randomEntrie].readerCounter == 1)
+        sem_wait(&entries[randomEntrie].writerSem);
+    sem_post(&entries[randomEntrie].readerSem);
+
+    int time = exponentialDistribution(0.5);
+    sleep(time);
+    // printf("Reading entrie num : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
+    entries[randomEntrie].reads ++ ;                         //read procedure
+    entries[randomEntrie].averageTime += time;
+    
+    sem_wait(&entries[randomEntrie].readerSem);
+    entries[randomEntrie].readerCounter --;
+    if (entries[randomEntrie].readerCounter == 0)
+        sem_post(&entries[randomEntrie].writerSem);
+    sem_post(&entries[randomEntrie].readerSem);
+}
+
+void writerFunction(int arraySize, entriePtr entries)
+{
+    int randomEntrie = rand() % arraySize;
+    sem_wait(&entries[randomEntrie].writerSem);
+    
+    int time = exponentialDistribution(0.5);
+    sleep(time);
+    // printf("Writing on entrie number : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
+    entries[randomEntrie].content = rand()%arraySize;       //write procedure
+    entries[randomEntrie].writes ++ ;
+    entries[randomEntrie].averageTime += time;
+    
+    // printf("Changed its value to : %d\n", entries[randomEntrie].content);
+    sem_post(&entries[randomEntrie].writerSem);
+}
+
 void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivationNum)
 {
     key_t key = ftok("src/functions.c", 100);             //produces unique key
@@ -48,51 +92,23 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
     
     srand(getpid());
     for (int i=0; i<peerActivationNum; i++) {
-        if ((rand()%10) <= rwAnalogy) {
-            //choose random entrie and try to read
-
-            int randomEntrie = rand() % arraySize;
-            sem_wait(&entries[randomEntrie].readerSem);
-            entries[randomEntrie].readerCounter ++;
-            if (entries[randomEntrie].readerCounter == 1)
-                sem_wait(&entries[randomEntrie].writerSem);
-            sem_post(&entries[randomEntrie].readerSem);
-            sleep(1);
-            // printf("Reading entrie num : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
-            entries[randomEntrie].reads ++ ;
-
-            sem_wait(&entries[randomEntrie].readerSem);
-            entries[randomEntrie].readerCounter --;
-            if (entries[randomEntrie].readerCounter == 0)
-                sem_post(&entries[randomEntrie].writerSem);
-            sem_post(&entries[randomEntrie].readerSem);
-        }
-        else {
-            //choose random entrie and try to write
-
-            int randomEntrie = rand() % arraySize;
-            sem_wait(&entries[randomEntrie].writerSem);
-            sleep(1);
-            // printf("Writing on entrie number : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
-            entries[randomEntrie].content = rand()%arraySize;
-            entries[randomEntrie].writes ++ ;
-            // printf("Changed its value to : %d\n", entries[randomEntrie].content);
-            sem_post(&entries[randomEntrie].writerSem);
-        }
+        if ((rand()%10) <= rwAnalogy)
+            readerFunction(arraySize, entries);
+        else
+            writerFunction(arraySize, entries);
     }
 
     if(pid != 0) {
         for (int n=0; n<arraySize; n++) {
-            printf("random number : %d %d\n", entries[n].reads , entries[n].writes);
+            printf("For entrie number   : %d \n   number of reads  : %d\n   number of writes : %d\n average time :%f \n\n", n,entries[n].reads , entries[n].writes, entries[n].averageTime/(float)(entries[n].writes+entries[n].reads));
             sem_destroy(&entries[n].readerSem);
             sem_destroy(&entries[n].writerSem);
         }
     }
-    
-    // struct shmid_ds shm_desc;                       //delete shared memory
+
     if (shmctl(shmId, IPC_RMID, NULL) == -1) {
         perror("shmctl error : ");
     }   
-    shmdt(shmAddress);                              //delete shared memory pointer
+    shmdt(shmAddress);
     exit(0);
 }
