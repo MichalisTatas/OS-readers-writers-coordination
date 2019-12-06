@@ -1,3 +1,4 @@
+#include "struct.h"
 double exponentialDistribution(double l);
 void readerFunction(int arraySize, entriePtr entries);
 void writerFunction(int arraySize, entriePtr entries);

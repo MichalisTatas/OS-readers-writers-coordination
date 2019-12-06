@@ -18,6 +18,5 @@ typedef struct entrie {
     int content;
     int reads;
     int writes;
-    int averageTime;
 } entrie;
 typedef entrie* entriePtr;

@@ -18,9 +18,7 @@ void readerFunction(int arraySize, entriePtr entries)
 
     int time = exponentialDistribution(0.5);
     sleep(time);
-    // printf("Reading entrie num : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
     entries[randomEntrie].reads ++ ;                         //read procedure
-    entries[randomEntrie].averageTime += time;
     
     sem_wait(&entries[randomEntrie].readerSem);
     entries[randomEntrie].readerCounter --;
@@ -36,12 +34,9 @@ void writerFunction(int arraySize, entriePtr entries)
     
     int time = exponentialDistribution(0.5);
     sleep(time);
-    // printf("Writing on entrie number : %d with value : %d \n", randomEntrie, entries[randomEntrie].content);
     entries[randomEntrie].content = rand()%arraySize;       //write procedure
     entries[randomEntrie].writes ++ ;
-    entries[randomEntrie].averageTime += time;
     
-    // printf("Changed its value to : %d\n", entries[randomEntrie].content);
     sem_post(&entries[randomEntrie].writerSem);
 }
 
@@ -68,14 +63,13 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
     entriePtr entries;
     entries = (entriePtr)shmAddress;
     srand(time(0));
-    for (int m=0; m<arraySize; m++) {
-        sem_init(&entries[m].readerSem, 1, 1);               //2nd argument is >0 because
-        sem_init(&entries[m].writerSem, 1, 1);               //fork creates processes not threads
-        entries[m].content = rand() % arraySize;
-        entries[m].readerCounter = 0;
-        entries[m].reads = 0;
-        entries[m].writes = 0;
-        entries[m].averageTime = 0;
+    for (int i=0; i<arraySize; i++) {
+        sem_init(&entries[i].readerSem, 1, 1);               //2nd argument is >0 because
+        sem_init(&entries[i].writerSem, 1, 1);               //fork creates processes not threads
+        entries[i].content = rand() % arraySize;
+        entries[i].readerCounter = 0;
+        entries[i].reads = 0;
+        entries[i].writes = 0;
     }
 
     pid_t pid;
@@ -90,17 +84,36 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
             break;
     }
     
+    int reads =0, writes = 0;
+    double totalTime = 0;
+    clock_t start, end;
+
     srand(getpid());
     for (int i=0; i<peerActivationNum; i++) {
-        if ((rand()%10) <= rwAnalogy)
+        if ((rand()%10) <= rwAnalogy) {
+            start = clock();
             readerFunction(arraySize, entries);
-        else
+            end = clock();
+            totalTime += (double)(end - start);
+            reads++;
+        }
+        else {
+            start = clock();
             writerFunction(arraySize, entries);
+            end = clock();
+            totalTime += (double)(end - start);
+            writes++;
+        }
     }
+
+    printf("Process with id : %d wrote %d times and read %d times and waited %lf time\n\n", getpid(), writes, reads, totalTime);
+
+    for (int i=0; i<childsNumber; i++)         //parent waits for childs to finish
+        wait(NULL);
 
     if(pid != 0) {
         for (int n=0; n<arraySize; n++) {
-            printf("For entrie number   : %d \n   number of reads  : %d\n   number of writes : %d\n average time :%f \n\n", n,entries[n].reads , entries[n].writes, entries[n].averageTime/(float)(entries[n].writes+entries[n].reads));
+            printf("For entrie number   : %d \n   number of reads  : %d\n   number of writes : %d\n \n", n,entries[n].reads , entries[n].writes);
             sem_destroy(&entries[n].readerSem);
             sem_destroy(&entries[n].writerSem);
         }
@@ -110,5 +123,6 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
         perror("shmctl error : ");
     }   
     shmdt(shmAddress);
+
     exit(0);
 }
