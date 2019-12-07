@@ -85,7 +85,7 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
     }
     
     int reads =0, writes = 0;
-    double totalTime = 0;
+    double totalTime = 0.0;
     clock_t start, end;
 
     srand(getpid());
@@ -94,19 +94,19 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
             start = clock();
             readerFunction(arraySize, entries);
             end = clock();
-            totalTime += (double)(end - start);
+            totalTime += ((double)(end - start));
             reads++;
         }
         else {
             start = clock();
             writerFunction(arraySize, entries);
             end = clock();
-            totalTime += (double)(end - start);
+            totalTime += ((double)(end - start));
             writes++;
         }
     }
 
-    printf("Process with id : %d wrote %d times and read %d times and waited %lf time\n\n", getpid(), writes, reads, totalTime);
+    printf("Process with id : %d wrote %d times and read %d times and waited on average %f time\n\n", getpid(), writes, reads, totalTime/(double)(reads+writes));
 
     for (int i=0; i<childsNumber; i++)         //parent waits for childs to finish
         wait(NULL);
