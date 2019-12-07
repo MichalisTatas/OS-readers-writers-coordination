@@ -7,10 +7,14 @@ double exponentialDistribution(double l){
     return -log(1- u) / l;
 }
 
-void readerFunction(int arraySize, entriePtr entries)
+int readerFunction(int arraySize, entriePtr entries)
 {
+    clock_t start1, start2, end1, end2;
+
     int randomEntrie = rand() % arraySize;
+    start1 = clock();
     sem_wait(&entries[randomEntrie].readerSem);
+    end1 = clock();
     entries[randomEntrie].readerCounter ++;
     if (entries[randomEntrie].readerCounter == 1)
         sem_wait(&entries[randomEntrie].writerSem);
@@ -20,17 +24,25 @@ void readerFunction(int arraySize, entriePtr entries)
     sleep(time);
     entries[randomEntrie].reads ++ ;                         //read procedure
     
+    start2 = clock();
     sem_wait(&entries[randomEntrie].readerSem);
+    end2 = clock();
     entries[randomEntrie].readerCounter --;
     if (entries[randomEntrie].readerCounter == 0)
         sem_post(&entries[randomEntrie].writerSem);
     sem_post(&entries[randomEntrie].readerSem);
+
+    return (double)(end1 - start1 + end2 - start2);
 }
 
-void writerFunction(int arraySize, entriePtr entries)
+int writerFunction(int arraySize, entriePtr entries)
 {
     int randomEntrie = rand() % arraySize;
+    clock_t start, end;
+
+    start = clock();
     sem_wait(&entries[randomEntrie].writerSem);
+    end = clock();
     
     int time = exponentialDistribution(0.5);
     sleep(time);
@@ -38,6 +50,7 @@ void writerFunction(int arraySize, entriePtr entries)
     entries[randomEntrie].writes ++ ;
     
     sem_post(&entries[randomEntrie].writerSem);
+    return (double)(end - start);
 }
 
 void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivationNum)
@@ -79,7 +92,7 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
             perror("fork error : ");
             exit(1);
         }
-
+    
         if (pid == 0)                 //if it is a child break and dont fork again
             break;
     }
@@ -91,22 +104,16 @@ void coordinator(int childsNumber, int arraySize, int rwAnalogy, int peerActivat
     srand(getpid());
     for (int i=0; i<peerActivationNum; i++) {
         if ((rand()%10) <= rwAnalogy) {
-            start = clock();
-            readerFunction(arraySize, entries);
-            end = clock();
-            totalTime += ((double)(end - start));
+            totalTime += readerFunction(arraySize, entries);
             reads++;
         }
         else {
-            start = clock();
-            writerFunction(arraySize, entries);
-            end = clock();
-            totalTime += ((double)(end - start));
+            totalTime += writerFunction(arraySize, entries);
             writes++;
         }
     }
 
-    printf("Process with id : %d wrote %d times and read %d times and waited on average %f time\n\n", getpid(), writes, reads, totalTime/(double)(reads+writes));
+    printf("Process with id : %d wrote %d times and read %d times and waited on average %12f time\n\n", getpid(), writes, reads, totalTime/(reads+writes));
 
     for (int i=0; i<childsNumber; i++)         //parent waits for childs to finish
         wait(NULL);

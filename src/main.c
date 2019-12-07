@@ -4,10 +4,6 @@
 
 int main(int argc, char* argv[])
 {
-    int childs_number = atoi(argv[1]);
-    int array_size = atoi(argv[2]);
-    int RWanalogy = atoi(argv[3]);             //readers writers analogy
-    int peersActivation = atoi(argv[4]);
-    coordinator(childs_number, array_size, RWanalogy, peersActivation);
+    coordinator(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]));
     return 0;
 }
